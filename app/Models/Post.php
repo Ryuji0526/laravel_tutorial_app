@@ -28,10 +28,16 @@ class Post extends Model
     }
 
      // 公開記事一覧取得
-     public function scopePublicList(Builder $query)
+     public function scopePublicList(Builder $query, string $tagSlug = null)
      {
+         if ($tagSlug) {
+             $query->whereHas('tags', function($query) use ($tagSlug) {
+                $query->where('slug', $tagSlug);
+             });
+         }
          return $query
              ->public()
+             ->with('user')
              ->latest('published_at')
              ->paginate(10);
      }
@@ -46,5 +52,23 @@ class Post extends Model
     public function getPublishedFormatAttribute()
     {
         return $this->published_at->format('Y年m月d日');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function tags()
+    {
+        return $this->belongsToMany(Tag::class);
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+        self::saving(function($post) {
+            $post->user_id = \Auth::id();
+        });
     }
 }
